@@ -1,0 +1,11 @@
+flask==2.0.1
+werkzeug==2.0.1
+python-dotenv
+numpy
+opencv-python
+Pillow
+torch>=1.7.0
+torchvision>=0.8.1
+pandas
+requests
+scikit-learn

@@ -1,0 +1,23 @@
+body {
+  font-family: sans-serif;
+  text-align: center;
+  background: #222;
+  color: #eee;
+}
+video, canvas {
+  border: 2px solid #555;
+  margin: 10px;
+}
+button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+pre {
+  background: #111;
+  padding: 10px;
+  text-align: left;
+  max-width: 640px;
+  margin: 10px auto;
+  border: 1px solid #333;
+}

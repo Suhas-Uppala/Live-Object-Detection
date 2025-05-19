@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv5 Object Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #6c5ce7;
+            --primary-light: #a29bfe;
+            --primary-dark: #5641e5;
+            --accent-color: #00cec9;
+            --accent-secondary: #fd79a8;
+            --success-color: #00b894;
+            --warning-color: #fdcb6e;
+            --danger-color: #ff7675;
+            --dark-bg: #121212;
+            --dark-surface: #1e1e1e;
+            --dark-surface-2: #252525;
+            --dark-surface-3: #333333;
+            --text-primary: #f5f6fa;
+            --text-secondary: #dfe6e9;
+            --text-muted: #b2bec3;
+            --border-color: #2d3436;
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --glow-primary: rgba(108, 92, 231, 0.5);
+            --glow-accent: rgba(0, 206, 201, 0.5);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--dark-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(145deg, var(--dark-bg), #1a1a2e);
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        h1 {
+            font-weight: 600;
+            color: var(--primary-light);
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            text-shadow: 0 0 10px var(--glow-primary);
+        }
+        
+        h3 {
+            font-weight: 500;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+        }
+        
+        .card {
+            background-color: var(--dark-surface);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            padding: 20px;
+            margin-bottom: 25px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid var(--border-color);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px var(--shadow-color);
+        }
+        
+        #webcam-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto 25px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            background-color: var(--dark-surface);
+        }
+        
+        #output-canvas {
+            width: 100%;
+            display: block;
+            border-radius: 12px;
+        }
+        
+        #fps {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: var(--accent-color);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 10;
+            border: 1px solid var(--accent-color);
+            box-shadow: 0 0 10px var(--glow-accent);
+        }
+        
+        .controls-container {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 25px 0;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-width: 150px;
+            background-color: var(--dark-surface-2);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(145deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            border: none;
+            box-shadow: 0 0 15px var(--glow-primary);
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(145deg, var(--primary-dark), var(--primary-color));
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 0 20px var(--glow-primary);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(145deg, var(--danger-color), #e53935);
+            color: white;
+            border: none;
+        }
+        
+        .btn-danger:hover:not(:disabled) {
+            background: linear-gradient(145deg, #e53935, var(--danger-color));
+            transform: translateY(-2px) scale(1.03);
+        }
+        
+        .btn-secondary {
+            background-color: var(--dark-surface-2);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background-color: var(--dark-surface-3);
+            transform: translateY(-2px) scale(1.03);
+        }
+        
+        .btn:disabled {
+            background-color: var(--dark-surface);
+            cursor: not-allowed;
+            transform: none;
+            opacity: 0.7;
+            border: 1px solid var(--border-color);
+        }
+        
+        #query-container {
+            display: flex;
+            margin: 25px auto;
+            max-width: 700px;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        
+        #query-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            font-family: 'Poppins', sans-serif;
+            font-size: 16px;
+            outline: none;
+            transition: box-shadow 0.3s ease;
+            background-color: var(--dark-surface);
+            color: var(--text-primary);
+        }
+        
+        #query-input::placeholder {
+            color: var(--text-muted);
+        }
+        
+        #query-input:focus {
+            box-shadow: inset 0 0 0 2px var(--primary-light);
+        }
+        
+        #query-btn {
+            padding: 15px 25px;
+            background: linear-gradient(145deg, var(--accent-color), #00b2b2);
+            color: #111;
+            border: none;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        #query-btn:hover {
+            background: linear-gradient(145deg, #00b2b2, var(--accent-color));
+            transform: scale(1.03);
+        }
+        
+        #status {
+            background-color: var(--dark-surface);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            margin-top: 25px;
+            text-align: left;
+            min-height: 150px;
+            border: 1px solid var(--border-color);
+        }
+        
+        #status p {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        #status ul {
+            margin: 10px 0;
+            padding-left: 20px;
+            color: var(--text-secondary);
+        }
+        
+        #model-status {
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+            background-color: var(--dark-surface);
+            border: 1px solid var(--border-color);
+        }
+        
+        #model-status.warning {
+            background-color: rgba(253, 203, 110, 0.15);
+            border: 1px solid var(--warning-color);
+            color: var(--warning-color);
+        }
+        
+        #model-status.success {
+            background-color: rgba(0, 184, 148, 0.15);
+            border: 1px solid var(--success-color);
+            color: var(--success-color);
+        }
+        
+        #model-status p {
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        #model-info h3 {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-top: 15px;
+        }
+        
+        #files-status {
+            list-style-type: none;
+            margin: 15px 0;
+            color: var(--text-secondary);
+        }
+        
+        #files-status li {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #download-instructions {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            color: var(--text-secondary);
+        }
+        
+        #download-instructions p {
+            margin-bottom: 15px;
+            font-weight: normal;
+        }
+        
+        #download-instructions ol {
+            padding-left: 25px;
+        }
+        
+        #download-instructions li {
+            margin-bottom: 10px;
+        }
+        
+        #download-instructions code {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--accent-color);
+        }
+        
+        #download-instructions a {
+            color: var(--primary-light);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        #download-instructions a:hover {
+            text-decoration: underline;
+            color: var(--accent-color);
+        }
+        
+        #detected-objects-container {
+            background: linear-gradient(145deg, #2d3436, #0f111a);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 25px auto;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            color: var(--text-primary);
+            max-width: 800px;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #detected-objects-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at top right, rgba(108, 92, 231, 0.1), transparent 60%),
+                        radial-gradient(circle at bottom left, rgba(0, 206, 201, 0.1), transparent 60%);
+            pointer-events: none;
+        }
+        
+        #detected-objects-title {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--accent-color);
+            position: relative;
+        }
+        
+        #detected-objects-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin: 0;
+            padding: 0;
+            list-style-type: none;
+            position: relative;
+        }
+        
+        .object-item {
+            background-color: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(5px);
+            color: var(--text-primary);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .object-item::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), transparent);
+            pointer-events: none;
+        }
+        
+        .object-item::before {
+            content: '';
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, var(--accent-color), var(--primary-color));
+            box-shadow: 0 0 10px var(--glow-accent);
+        }
+        
+        .object-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .object-item i {
+            color: var(--accent-color);
+        }
+        
+        .object-confidence {
+            background: linear-gradient(145deg, var(--primary-dark), var(--primary-color));
+            font-size: 0.8em;
+            padding: 3px 8px;
+            border-radius: 12px;
+            margin-left: 5px;
+            color: white;
+        }
+        
+        .high-confidence {
+            background: linear-gradient(145deg, #00b894, #00cec9);
+        }
+        
+        .medium-confidence {
+            background: linear-gradient(145deg, #fdcb6e, #ffeaa7);
+            color: #2d3436;
+        }
+        
+        .low-confidence {
+            background: linear-gradient(145deg, #ff7675, #fab1a0);
+        }
+        
+        #no-objects-message {
+            text-align: center;
+            color: var(--text-muted);
+            font-style: italic;
+            padding: 20px;
+        }
+        
+        .query-result {
+            background-color: var(--dark-surface);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        .query-result p {
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+        }
+        
+        .query-result p:first-child {
+            font-weight: 600;
+            color: var(--primary-light);
+        }
+        
+        #clearQueryBtn {
+            display: block;
+            margin: 15px auto 0;
+            padding: 10px 20px;
+            background-color: var(--dark-surface-2);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        #clearQueryBtn:hover {
+            background-color: var(--dark-surface-3);
+            transform: scale(1.05);
+        }
+        
+        /* Particle container */
+        #particles-js {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+        }
+        
+        /* Neon text effect */
+        .neon-text {
+            text-shadow: 0 0 5px var(--accent-color),
+                         0 0 10px var(--accent-color),
+                         0 0 20px var(--accent-color),
+                         0 0 40px var(--accent-color);
+            color: var(--accent-color);
+        }
+        
+        /* Glow effects */
+        .glow-effect {
+            box-shadow: 0 0 10px var(--glow-primary),
+                        0 0 20px var(--glow-primary);
+        }
+        
+        .glow-accent {
+            box-shadow: 0 0 10px var(--glow-accent),
+                        0 0 20px var(--glow-accent);
+        }
+        
+        /* Cool scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--dark-bg);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(var(--primary-color), var(--accent-color));
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(var(--accent-color), var(--primary-color));
+        }
+
+        /* Tooltip styles */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 120px;
+            background-color: var(--dark-surface-3);
+            color: var(--text-primary);
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Animation for object detection */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Loading animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--accent-color);
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        
+        /* Flicker animation for neon effect */
+        @keyframes flicker {
+            0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {
+                opacity: 1;
+            }
+            20%, 21.999%, 63%, 63.999%, 65%, 69.999% {
+                opacity: 0.4;
+            }
+        }
+        
+        .flicker {
+            animation: flicker 8s infinite;
+        }
+
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                font-size: 14px;
+                min-width: 130px;
+            }
+            
+            #query-input, #query-btn {
+                padding: 12px 15px;
+                font-size: 14px;
+            }
+            
+            .object-item {
+                padding: 8px 15px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    
+    <div class="header">
+        <h1><i class="fas fa-camera-retro"></i> YOLO<span class="neon-text">v5</span> <span class="flicker">Object Detection</span></h1>
+        <p>Real-time object detection using your webcam and YOLOv5</p>
+    </div>
+    
+    <div id="model-status" class="card {% if model_status == 'not_loaded' %}warning{% endif %}">
+        <p id="status-message"><span class="loading-spinner"></span> Checking model status...</p>
+        <div id="model-info" style="display: none;">
+            <h3>Model Files Status:</h3>
+            <ul id="files-status"></ul>
+            <div id="download-instructions" style="display: none;">
+                <p><i class="fas fa-exclamation-triangle"></i> You need to download and set up YOLOv5 to enable full detection capabilities:</p>
+                <ol>
+                    <li>Run the setup script:
+                        <code>python download_yolov5.py</code>
+                    </li>
+                    <li>Alternatively, set up manually:
+                        <ul>
+                            <li>Clone YOLOv5 repository: <code>git clone https://github.com/ultralytics/yolov5.git</code></li>
+                            <li>Install requirements: <code>pip install -r yolov5/requirements.txt</code></li>
+                            <li>Download model weights: <a id="weights-link" href="https://github.com/ultralytics/yolov5/releases/download/v5.0/yolov5s.pt" target="_blank">YOLOv5s model</a> and save to <code id="weights-path">yolov5/weights/yolov5s.pt</code></li>
+                        </ul>
+                    </li>
+                    <li>Restart the application</li>
+                </ol>
+                <p>Currently using basic fallback detection with limited capabilities.</p>
+            </div>
+        </div>
+    </div>
+      
+    <div id="webcam-container" class="card glow-effect">
+        <video id="webcam" autoplay playsinline style="display: none;"></video>
+        <canvas id="output-canvas"></canvas>
+        <div id="fps" class="glow-accent"><i class="fas fa-tachometer-alt"></i> FPS: 0</div>
+    </div>
+    
+    <div class="controls-container">
+        <button id="startBtn" class="btn btn-primary"><i class="fas fa-play-circle"></i> Start Camera</button>
+        <button id="stopBtn" class="btn btn-danger" disabled><i class="fas fa-stop-circle"></i> Stop Camera</button>
+        <button id="fullscreenBtn" class="btn btn-secondary tooltip"><i class="fas fa-expand"></i> Fullscreen
+            <span class="tooltip-text">View camera in fullscreen</span>
+        </button>
+    </div>
+    
+    <div id="detected-objects-container">
+        <h3 id="detected-objects-title"><i class="fas fa-eye neon-text"></i> Objects Detected</h3>
+        <div id="detected-objects-content">
+            <p id="no-objects-message"><i class="fas fa-camera"></i> Start the camera to detect objects</p>
+            <ul id="detected-objects-list"></ul>
+        </div>
+    </div>
+    
+    <div id="query-container">
+        <input type="text" id="query-input" placeholder="Ask something about what you see...">
+        <button id="query-btn"><i class="fas fa-search"></i> Ask</button>
+    </div>
+    
+    <div id="status" class="card">
+        <p><i class="fas fa-info-circle"></i> Status: Waiting for camera...</p>
+        <p>Detailed detection information will appear here.</p>
+    </div>
+    
+    <!-- Particle.js -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    
+    <script>
+        // DOM elements
+        const webcamElement = document.getElementById('webcam');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const statusDiv = document.getElementById('status');
+        const fpsElement = document.getElementById('fps');
+        const queryInput = document.getElementById('query-input');
+        const queryBtn = document.getElementById('query-btn');
+        const modelStatusDiv = document.getElementById('model-status');
+        const modelInfo = document.getElementById('model-info');
+        const filesStatus = document.getElementById('files-status');
+        const downloadInstructions = document.getElementById('download-instructions');
+        const statusMessage = document.getElementById('status-message');
+        const detectedObjectsList = document.getElementById('detected-objects-list');
+        const noObjectsMessage = document.getElementById('no-objects-message');
+        const outputCanvas = document.getElementById('output-canvas');
+        
+        // Variables
+        let stream = null;
+        let isRunning = false;
+        let detectionInterval = null;
+        const FPS = 5; // Detection rate (frames per second)
+        let lastCapturedImage = null;
+        let isQueryActive = false; // Flag to track if a query is being displayed
+        
+        // Performance tracking
+        let frameCount = 0;
+        let lastFpsUpdateTime = Date.now();
+        
+        // Initialize particles.js
+        particlesJS('particles-js', {
+            "particles": {
+                "number": {
+                    "value": 50,
+                    "density": {
+                        "enable": true,
+                        "value_area": 800
+                    }
+                },
+                "color": {
+                    "value": "#6c5ce7"
+                },
+                "shape": {
+                    "type": "circle",
+                    "stroke": {
+                        "width": 0,
+                        "color": "#000000"
+                    },
+                    "polygon": {
+                        "nb_sides": 5
+                    }
+                },
+                "opacity": {
+                    "value": 0.3,
+                    "random": true,
+                    "anim": {
+                        "enable": true,
+                        "speed": 1,
+                        "opacity_min": 0.1,
+                        "sync": false
+                    }
+                },
+                "size": {
+                    "value": 3,
+                    "random": true,
+                    "anim": {
+                        "enable": true,
+                        "speed": 2,
+                        "size_min": 0.1,
+                        "sync": false
+                    }
+                },
+                "line_linked": {
+                    "enable": true,
+                    "distance": 150,
+                    "color": "#00cec9",
+                    "opacity": 0.2,
+                    "width": 1
+                },
+                "move": {
+                    "enable": true,
+                    "speed": 1,
+                    "direction": "none",
+                    "random": false,
+                    "straight": false,
+                    "out_mode": "out",
+                    "bounce": false,
+                    "attract": {
+                        "enable": true,
+                        "rotateX": 600,
+                        "rotateY": 1200
+                    }
+                }
+            },
+            "interactivity": {
+                "detect_on": "window",
+                "events": {
+                    "onhover": {
+                        "enable": true,
+                        "mode": "grab"
+                    },
+                    "onclick": {
+                        "enable": true,
+                        "mode": "push"
+                    },
+                    "resize": true
+                },
+                "modes": {
+                    "grab": {
+                        "distance": 140,
+                        "line_linked": {
+                            "opacity": 0.6
+                        }
+                    },
+                    "push": {
+                        "particles_nb": 4
+                    }
+                }
+            },
+            "retina_detect": true
+        });
+        
+        // Check model status on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/model_status');
+                // Check if response is ok before trying to parse JSON
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Response is not JSON');
+                }
+                
+                const data = await response.json();
+                
+                if (data.model_loaded) {
+                    statusMessage.innerHTML = "<i class='fas fa-check-circle'></i> YOLOv5 model loaded successfully! Full object detection is available.";
+                    modelStatusDiv.classList.remove('warning');
+                    modelStatusDiv.classList.add('success');
+                } else {
+                    statusMessage.innerHTML = `<i class='fas fa-exclamation-triangle'></i> ${data.message}`;
+                    modelStatusDiv.classList.add('warning');
+                    modelInfo.style.display = 'block';
+                    downloadInstructions.style.display = 'block';
+                    
+                    // Set file paths
+                    if (data.files_status && data.files_status.weights) {
+                        document.getElementById('weights-path').textContent = data.files_status.weights.path;
+                    }
+                    
+                    // Create file status list
+                    let statusHtml = '';
+                    if (data.files_status) {
+                        Object.entries(data.files_status).forEach(([name, info]) => {
+                            const icon = info.exists ? 
+                                "<i class='fas fa-check-circle' style='color: var(--success-color);'></i>" : 
+                                "<i class='fas fa-times-circle' style='color: var(--danger-color);'></i>";
+                            statusHtml += `<li>${icon} ${name}: ${info.exists ? 'Found' : 'Missing'} (${info.path})</li>`;
+                        });
+                        filesStatus.innerHTML = statusHtml;
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching model status:", error);
+                statusMessage.innerHTML = "<i class='fas fa-exclamation-circle'></i> Error checking model status. Check browser console for details.";
+                modelStatusDiv.classList.add('warning');
+
+                // Show a simple default display
+                modelInfo.style.display = 'block';
+                downloadInstructions.style.display = 'block';
+
+                // Default message for files status
+                filesStatus.innerHTML = `
+                    <li><i class='fas fa-times-circle' style='color: var(--danger-color);'></i> YOLOv5: Missing (yolov5 directory)</li>
+                    <li><i class='fas fa-times-circle' style='color: var(--danger-color);'></i> Model weights: Missing (yolov5/weights/yolov5s.pt)</li>
+                `;
+            }
+        });
+        
+        // Start webcam
+        startBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                
+                webcamElement.srcObject = stream;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                fullscreenBtn.disabled = false;
+                isRunning = true;
+                
+                statusDiv.innerHTML = '<p><i class="fas fa-spinner fa-spin"></i> Status: Camera started. Processing frames...</p>';
+                noObjectsMessage.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detecting objects...';
+                
+                // Add pulse effect to webcam container
+                document.getElementById('webcam-container').classList.add('pulse');
+                
+                // Start detection loop
+                detectionInterval = setInterval(processFrame, 1000 / FPS);
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<p><i class="fas fa-exclamation-circle"></i> Error accessing camera: ${error.message}</p>`;
+            }
+        });
+        
+        // Stop webcam
+        stopBtn.addEventListener('click', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                webcamElement.srcObject = null;
+                stream = null;
+            }
+            
+            clearInterval(detectionInterval);
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            fullscreenBtn.disabled = true;
+            isRunning = false;
+            statusDiv.innerHTML = '<p><i class="fas fa-info-circle"></i> Status: Camera stopped.</p>';
+            noObjectsMessage.innerHTML = '<i class="fas fa-camera"></i> Start the camera to detect objects';
+            detectedObjectsList.innerHTML = '';
+            noObjectsMessage.style.display = 'block';
+            detectedObjectsList.style.display = 'none';
+            
+            // Remove pulse effect
+            document.getElementById('webcam-container').classList.remove('pulse');
+        });
+        
+        // Fullscreen view
+        fullscreenBtn.addEventListener('click', () => {
+            const container = document.getElementById('webcam-container');
+            
+            if (!document.fullscreenElement) {
+                if (container.requestFullscreen) {
+                    container.requestFullscreen();
+                } else if (container.mozRequestFullScreen) { // Firefox
+                    container.mozRequestFullScreen();
+                } else if (container.webkitRequestFullscreen) { // Chrome, Safari, Opera
+                    container.webkitRequestFullscreen();
+                } else if (container.msRequestFullscreen) { // IE/Edge
+                    container.msRequestFullscreen();
+                }
+                fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i> Exit Fullscreen';
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+                fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
+            }
+        });
+        
+        // Listen for fullscreen change
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+        
+        function handleFullscreenChange() {
+            if (!document.fullscreenElement && !document.webkitIsFullScreen && 
+                !document.mozFullScreen && !document.msFullscreenElement) {
+                fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
+            }
+        }
+        
+        // Process a single frame
+        async function processFrame() {
+            if (!isRunning) return;
+            
+            try {
+        // Setup canvas for display
+                const outputCanvas = document.getElementById('output-canvas');
+                const ctx = outputCanvas.getContext('2d');
+                outputCanvas.width = webcamElement.videoWidth;
+                outputCanvas.height = webcamElement.videoHeight;
+                
+                // Create temporary canvas for processing
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = webcamElement.videoWidth;
+                tempCanvas.height = webcamElement.videoHeight;
+                tempCtx.drawImage(webcamElement, 0, 0, tempCanvas.width, tempCanvas.height);
+                
+                // Draw the video frame on the visible canvas
+                ctx.drawImage(webcamElement, 0, 0, outputCanvas.width, outputCanvas.height);
+                
+                // Add a subtle vignette effect
+                addVignetteEffect(ctx, outputCanvas.width, outputCanvas.height);
+                
+                // Convert canvas to base64
+                const imageBase64 = tempCanvas.toDataURL('image/jpeg');
+                lastCapturedImage = imageBase64;
+                
+                // Send to backend for processing
+                const response = await fetch('/detect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ image: imageBase64 })
+                });
+                
+                const data = await response.json();
+                  if (data.error) {
+                    if (!isQueryActive) { // Only update if no query is active
+                        statusDiv.innerHTML = `<p><i class="fas fa-exclamation-circle"></i> Error: ${data.error}</p>`;
+                        noObjectsMessage.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error detecting objects';
+                        detectedObjectsList.innerHTML = '';
+                        noObjectsMessage.style.display = 'block';
+                        detectedObjectsList.style.display = 'none';
+                    }
+                } else {
+                    // Only update status div if no query is active
+                    if (!isQueryActive) {
+                        let statusHtml = `<p><i class="fas fa-spinner fa-spin"></i> Status: Processing frames</p>`;
+                        statusHtml += `<p><i class="fas fa-tag"></i> Detected ${data.result.count} object(s):</p>`;
+                    statusHtml += '<ul>';
+                    data.result.objects.forEach(obj => {
+                        statusHtml += `<li>${obj}</li>`;
+                    });
+                    statusHtml += '</ul>';
+                    statusDiv.innerHTML = statusHtml;
+                    }
+                    
+                    // Update the dedicated objects display section
+                    updateDetectedObjectsDisplay(data.result.objects);
+
+                    // Draw bounding boxes
+                    if (data.result.boxes && data.result.boxes.length > 0) {
+                        data.result.boxes.forEach((box, i) => {
+                            if (box && box.length >= 4 && i < data.result.objects.length) {
+                            const [x, y, w, h] = box;
+                                const objParts = data.result.objects[i].split(' (');
+                                const label = objParts[0];
+                                const confidence = parseFloat(objParts[1].replace(')', ''));
+                                
+                                // Get color based on confidence
+                                const boxColor = getConfidenceColor(confidence);
+                                
+                                // Draw rectangle with rounded corners and glow
+                                ctx.strokeStyle = boxColor;
+                                ctx.lineWidth = 3;
+                                ctx.shadowColor = boxColor;
+                                ctx.shadowBlur = 15;
+                                ctx.beginPath();
+                                ctx.roundRect(x, y, w, h, 8);
+                                ctx.stroke();
+                                ctx.shadowBlur = 0;
+                                
+                                // Draw scanning effect line
+                                drawScanningEffect(ctx, x, y, w, h);
+                                
+                                // Create gradient for label background
+                                const gradient = ctx.createLinearGradient(x, y - 30, x + ctx.measureText(label).width + 20, y);
+                                gradient.addColorStop(0, boxColor);
+                                gradient.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
+                                ctx.fillStyle = gradient;
+                                
+                                // Draw rounded rectangle for label background
+                                ctx.beginPath();
+                                ctx.roundRect(x - 5, y - 30, ctx.measureText(label).width + 60, 25, 5);
+                                ctx.fill();
+                            
+                            // Draw label text
+                                ctx.fillStyle = 'white';
+                                ctx.font = 'bold 16px Poppins, sans-serif';
+                                ctx.fillText(`${label} (${(confidence * 100).toFixed(0)}%)`, x + 5, y - 12);
+                            }
+                        });
+                    }
+                }
+                
+                // Update FPS counter
+                frameCount++;
+                const now = Date.now();
+                const elapsed = now - lastFpsUpdateTime;
+                
+                if (elapsed >= 1000) { // Update FPS every second
+                    const fps = (frameCount / elapsed * 1000).toFixed(1);
+                    fpsElement.innerHTML = `<i class="fas fa-tachometer-alt"></i> FPS: ${fps}`;
+                    frameCount = 0;
+                    lastFpsUpdateTime = now;
+                }
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<p><i class="fas fa-exclamation-circle"></i> Error processing frame: ${error.message}</p>`;
+                noObjectsMessage.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error processing video frame';
+                detectedObjectsList.innerHTML = '';
+                noObjectsMessage.style.display = 'block';
+                detectedObjectsList.style.display = 'none';
+            }
+        }
+        
+        // Add a vignette effect to canvas
+        function addVignetteEffect(ctx, width, height) {
+            const gradient = ctx.createRadialGradient(
+                width / 2, height / 2, 0,
+                width / 2, height / 2, Math.sqrt(width * width + height * height) / 2
+            );
+            gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+        }
+        
+        // Draw scanning effect line
+        function drawScanningEffect(ctx, x, y, width, height) {
+            const time = Date.now() * 0.001; // Get current time in seconds
+            const lineY = y + ((Math.sin(time * 3) + 1) / 2) * height; // Oscillate between y and y+height
+            
+            ctx.beginPath();
+            ctx.moveTo(x, lineY);
+            ctx.lineTo(x + width, lineY);
+            ctx.strokeStyle = 'rgba(0, 206, 201, 0.7)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]); // Create dashed line
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash
+        }
+        
+        // Get color based on confidence score
+        function getConfidenceColor(confidence) {
+            if (confidence >= 0.7) {
+                return '#00cec9'; // High confidence - teal
+            } else if (confidence >= 0.5) {
+                return '#fdcb6e'; // Medium confidence - yellow
+            } else {
+                return '#ff7675'; // Low confidence - red
+            }
+        }
+        
+        // Update the detected objects display
+        function updateDetectedObjectsDisplay(objects) {
+            if (!objects || objects.length === 0) {
+                noObjectsMessage.innerHTML = '<i class="fas fa-search"></i> No objects detected';
+                noObjectsMessage.style.display = 'block';
+                detectedObjectsList.style.display = 'none';
+                return;
+            }
+            
+            noObjectsMessage.style.display = 'none';
+            detectedObjectsList.style.display = 'flex';
+            
+            // Clear the list
+            detectedObjectsList.innerHTML = '';
+            
+            // Add each object to the list
+            objects.forEach(obj => {
+                const parts = obj.split(' (');
+                const objectName = parts[0];
+                const confidenceStr = parts.length > 1 ? parts[1].replace(')', '') : '0.00';
+                const confidence = parseFloat(confidenceStr);
+                
+                const listItem = document.createElement('li');
+                listItem.className = 'object-item';
+                
+                // Get appropriate icon for the object type
+                let icon = 'fas fa-cube'; // default icon
+                
+                // Map common object types to appropriate icons
+                const objectIcons = {
+                    'person': 'fas fa-user',
+                    'car': 'fas fa-car',
+                    'truck': 'fas fa-truck',
+                    'bus': 'fas fa-bus',
+                    'bicycle': 'fas fa-bicycle',
+                    'motorbike': 'fas fa-motorcycle',
+                    'cat': 'fas fa-cat',
+                    'dog': 'fas fa-dog',
+                    'bird': 'fas fa-kiwi-bird',
+                    'bottle': 'fas fa-wine-bottle',
+                    'cup': 'fas fa-mug-hot',
+                    'chair': 'fas fa-chair',
+                    'laptop': 'fas fa-laptop',
+                    'phone': 'fas fa-mobile-alt',
+                    'book': 'fas fa-book',
+                    'clock': 'fas fa-clock'
+                };
+                
+                // Check if we have a specific icon for this object type
+                for (const [key, value] of Object.entries(objectIcons)) {
+                    if (objectName.toLowerCase().includes(key)) {
+                        icon = value;
+                        break;
+                    }
+                }
+                
+                // Determine confidence class
+                let confidenceClass = 'object-confidence';
+                if (confidence >= 0.7) {
+                    confidenceClass += ' high-confidence';
+                } else if (confidence >= 0.5) {
+                    confidenceClass += ' medium-confidence';
+                } else {
+                    confidenceClass += ' low-confidence';
+                }
+                
+                listItem.innerHTML = `
+                    <i class="${icon}"></i> ${objectName} 
+                    <span class="${confidenceClass}">${confidence.toFixed(2)}</span>
+                `;
+                
+                detectedObjectsList.appendChild(listItem);
+            });
+        }
+        
+        // Handle query submission
+        queryBtn.addEventListener('click', async () => {
+            const query = queryInput.value.trim();
+            if (!query) {
+                showNotification('Please enter a query');
+                return;
+            }
+            
+            if (!lastCapturedImage) {
+                showNotification('Please start the camera first');
+                return;
+            }
+            
+            statusDiv.innerHTML = '<p><div class="loading-spinner"></div> Processing your query...</p>';
+            
+            try {
+                // Set the query active flag
+                isQueryActive = true;
+                
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        image: lastCapturedImage,
+                        query: query 
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    statusDiv.innerHTML = `<p><i class="fas fa-exclamation-circle"></i> Error: ${data.error}</p>`;
+                } else {
+                    let responseHtml = `
+                        <div class="query-result">
+                            <p><i class="fas fa-question-circle"></i> Query: ${query}</p>
+                            <p><i class="fas fa-comment-dots"></i> Answer: ${data.answer}</p>`;
+                    
+                    if (data.result && data.result.objects && data.result.objects.length > 0) {
+                        responseHtml += `<p><i class="fas fa-tag"></i> Detected objects: ${data.result.objects.join(', ')}</p>`;
+                        
+                        // Also update the dedicated objects display
+                        updateDetectedObjectsDisplay(data.result.objects);
+                    } else {
+                        responseHtml += `<p><i class="fas fa-search"></i> No objects detected</p>`;
+                        noObjectsMessage.innerHTML = '<i class="fas fa-search"></i> No objects detected';
+                        noObjectsMessage.style.display = 'block';
+                        detectedObjectsList.style.display = 'none';
+                    }
+                    
+                    responseHtml += `<button id="clearQueryBtn"><i class="fas fa-undo"></i> Return to Detection</button>
+                        </div>`;
+                    
+                    statusDiv.innerHTML = responseHtml;
+                    
+                    // Add event listener to the clear button
+                    document.getElementById('clearQueryBtn').addEventListener('click', () => {
+                        isQueryActive = false;
+                        statusDiv.innerHTML = '<p><i class="fas fa-info-circle"></i> Status: Processing frames...</p>';
+                    });
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<p><i class="fas fa-exclamation-circle"></i> Error processing query: ${error.message}</p>`;
+                isQueryActive = false;
+            }
+        });
+        
+        // Show notification
+        function showNotification(message) {
+            // Create notification element if it doesn't exist
+            let notification = document.getElementById('notification');
+            if (!notification) {
+                notification = document.createElement('div');
+                notification.id = 'notification';
+                notification.style.position = 'fixed';
+                notification.style.top = '20px';
+                notification.style.left = '50%';
+                notification.style.transform = 'translateX(-50%)';
+                notification.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                notification.style.color = 'white';
+                notification.style.padding = '15px 20px';
+                notification.style.borderRadius = '8px';
+                notification.style.zIndex = '1000';
+                notification.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.3s ease';
+                document.body.appendChild(notification);
+            }
+            
+            // Set message and show notification
+            notification.textContent = message;
+            notification.style.opacity = '1';
+            
+            // Hide notification after 3 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+            }, 3000);
+        }
+        
+        // Add polyfill for roundRect if not supported
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+                if (width < 2 * radius) radius = width / 2;
+                if (height < 2 * radius) radius = height / 2;
+                this.beginPath();
+                this.moveTo(x + radius, y);
+                this.arcTo(x + width, y, x + width, y + height, radius);
+                this.arcTo(x + width, y + height, x, y + height, radius);
+                this.arcTo(x, y + height, x, y, radius);
+                this.arcTo(x, y, x + width, y, radius);
+                this.closePath();
+                return this;
+            };
+        }
+        
+        // Handle Enter key press in query input
+        queryInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                queryBtn.click();
+            }
+        });
+        
+        // Initialize fullscreen button state
+        fullscreenBtn.disabled = true;
+        
+        // Theme toggle for fun
+        function toggleThemeEffect() {
+            document.body.classList.toggle('theme-pulse');
+            setTimeout(() => {
+                document.body.classList.remove('theme-pulse');
+            }, 1000);
+        }
+        
+        // Easter egg - triple click on title
+        document.querySelector('.header h1').addEventListener('click', function(e) {
+            if (e.detail === 3) { // Triple click
+                toggleThemeEffect();
+                showNotification('🚀 You found a secret! Nice job!');
+            }
+        });
+    </script>
+</body>
+</html>
