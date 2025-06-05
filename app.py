@@ -30,7 +30,43 @@ fallback_classes = ["person", "bicycle", "car", "motorbike", "airplane", "bus", 
            "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair",
            "sofa", "pottedplant", "bed", "diningtable", "toilet", "tvmonitor", "laptop", "mouse",
            "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator",
-           "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"]
+           "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush",
+           # Additional specific objects
+           "pen", "pencil", "marker", "notebook", "folder", "paper", "envelope", "stamp", "stapler",
+           "paperclip", "rubber band", "tape", "glue", "scissors", "ruler", "calculator", "headphones",
+           "earphones", "charger", "cable", "usb drive", "memory card", "camera", "tripod", "microphone",
+           "speaker", "printer", "scanner", "monitor", "keyboard", "mouse pad", "desk lamp", "coffee mug",
+           "water bottle", "lunch box", "snack", "candy", "chips", "cookies", "fruit", "vegetables",
+           "bread", "cereal", "milk", "juice", "soda", "beer", "wine", "coffee", "tea", "spices",
+           "salt", "pepper", "sugar", "honey", "jam", "butter", "cheese", "yogurt", "meat", "fish",
+           "chicken", "eggs", "rice", "pasta", "sauce", "soup", "salad", "sandwich", "burger", "fries",
+           "pizza slice", "taco", "sushi", "noodles", "dumplings", "cake slice", "ice cream", "chocolate",
+           "candy bar", "gum", "mints", "vitamins", "medicine", "bandage", "cotton", "tissue", "napkin",
+           "toilet paper", "soap", "shampoo", "conditioner", "toothpaste", "deodorant", "perfume",
+           "makeup", "brush", "comb", "mirror", "towel", "washcloth", "sponge", "cleaning spray",
+           "broom", "mop", "vacuum", "dustpan", "trash can", "recycling bin", "plant", "flower",
+           "candle", "picture frame", "painting", "poster", "calendar", "clock", "watch", "jewelry",
+           "necklace", "bracelet", "ring", "earrings", "glasses", "sunglasses", "hat", "scarf",
+           "gloves", "socks", "shoes", "boots", "sandals", "slippers", "jacket", "coat", "sweater",
+           "shirt", "pants", "shorts", "skirt", "dress", "suit", "tie", "belt", "wallet", "purse",
+           "backpack", "briefcase", "luggage", "umbrella", "cane", "walking stick", "camera", "binoculars",
+           "telescope", "compass", "map", "guidebook", "ticket", "passport", "credit card", "money",
+           "coins", "keys", "phone case", "tablet case", "laptop case", "camera case", "guitar case",
+           "instrument", "music sheet", "bookmark", "magnifying glass", "flashlight", "batteries",
+           "extension cord", "power strip", "surge protector", "router", "modem", "antenna", "satellite dish",
+           "solar panel", "wind turbine", "generator", "battery", "fuel", "oil", "gas", "water",
+           "fire", "smoke", "steam", "cloud", "rain", "snow", "ice", "fog", "mist", "dew", "frost",
+           "lightning", "thunder", "wind", "storm", "hurricane", "tornado", "earthquake", "volcano",
+           "mountain", "hill", "valley", "river", "lake", "ocean", "beach", "desert", "forest",
+           "jungle", "grassland", "meadow", "garden", "park", "playground", "stadium", "arena",
+           "theater", "cinema", "museum", "library", "school", "university", "hospital", "clinic",
+           "pharmacy", "store", "market", "mall", "restaurant", "cafe", "bar", "hotel", "motel",
+           "house", "apartment", "building", "skyscraper", "bridge", "tunnel", "road", "street",
+           "highway", "railway", "airport", "port", "station", "terminal", "gate", "door", "window",
+           "wall", "floor", "ceiling", "roof", "stairs", "elevator", "escalator", "ramp", "path",
+           "trail", "track", "field", "court", "pool", "fountain", "statue", "monument", "tower",
+           "antenna", "satellite", "rocket", "spacecraft", "satellite", "planet", "star", "moon",
+           "sun", "galaxy", "universe"]
 
 def initialize_model():
     """Initialize YOLOv5 model"""
@@ -220,59 +256,149 @@ def detect_objects(image):
 
 def answer_query(query, detected_objects):
     """
-    Generate a response to the user's query based on the detected objects
+    Generate a detailed and contextual response to any user query based on the detected objects
     """
     if not detected_objects or len(detected_objects) == 0:
-        return "I don't see any objects in the image."
-    
-    # Extract just the object names without confidence values
-    object_names = [obj.split(" (")[0] for obj in detected_objects]
-    
-    # Count objects by type
-    object_counts = {}
-    for obj in object_names:
-        if obj in object_counts:
-            object_counts[obj] += 1
+        return "I don't see any objects in the current frame."
+
+    # Extract object names and confidence values
+    object_details = []
+    for obj in detected_objects:
+        if " (" in obj:
+            name, conf = obj.split(" (")
+            conf = float(conf.rstrip(")"))
+            object_details.append({"name": name, "confidence": conf})
         else:
-            object_counts[obj] = 1
-    
-    # Handle different types of queries
+            object_details.append({"name": obj, "confidence": 1.0})
+
+    # Count objects by type and calculate statistics
+    object_counts = {}
+    object_confidences = {}
+    for obj in object_details:
+        name = obj["name"]
+        if name in object_counts:
+            object_counts[name] += 1
+            object_confidences[name].append(obj["confidence"])
+        else:
+            object_counts[name] = 1
+            object_confidences[name] = [obj["confidence"]]
+
+    # Calculate average confidences
+    avg_confidences = {
+        name: sum(confs) / len(confs) 
+        for name, confs in object_confidences.items()
+    }
+
+    # Convert query to lowercase for easier matching
     query = query.lower()
-    
-    # Check for "how many" queries
-    if "how many" in query:
-        for obj in object_names:
-            if obj.lower() in query:
-                count = object_counts[obj]
-                return f"I can see {count} {obj}{'s' if count > 1 else ''}."
-        
-        # If no specific object was mentioned
-        total = len(detected_objects)
-        return f"I can see {total} object{'s' if total > 1 else ''} in total."
-    
-    # Check for "is there" or "do you see" queries
-    if any(phrase in query for phrase in ["is there", "are there", "do you see", "can you see"]):
-        for obj_type in object_counts.keys():
-            if obj_type.lower() in query:
-                count = object_counts[obj_type]
-                return f"Yes, I can see {count} {obj_type}{'s' if count > 1 else ''}."
-        
-        # If asking for an object not found
-        for cls in classes:
-            if isinstance(cls, str) and cls.lower() in query:
-                return f"No, I don't see any {cls} in the image."
-    
-    # Check for "what" queries
-    if "what" in query and any(word in query for word in ["objects", "things", "do you see"]):
-        if object_names:
-            if len(object_names) == 1:
-                return f"I can see a {object_names[0]}."
+
+    # Handle different types of questions
+
+    # 1. Questions about specific objects
+    for obj_type in object_counts:
+        if obj_type.lower() in query:
+            count = object_counts[obj_type]
+            avg_conf = avg_confidences[obj_type]
+            
+            # Handle different question types for specific objects
+            if "where" in query:
+                return f"I can see {count} {obj_type}{'s' if count > 1 else ''} in the frame."
+            elif "how many" in query:
+                return f"There {'are' if count > 1 else 'is'} {count} {obj_type}{'s' if count > 1 else ''} in the frame."
+            elif any(word in query for word in ["is there", "are there", "do you see", "can you see"]):
+                return f"Yes, I can see {count} {obj_type}{'s' if count > 1 else ''} with {avg_conf:.0%} confidence."
             else:
-                formatted_objects = ", ".join(object_names[:-1]) + " and " + object_names[-1]
-                return f"I can see: {formatted_objects}."
-    
-    # Default response
-    return f"I can see the following objects: {', '.join(object_names)}."
+                return f"I can see {count} {obj_type}{'s' if count > 1 else ''} in the frame with {avg_conf:.0%} confidence."
+
+    # 2. Questions about the scene/video
+    if any(word in query for word in ["video", "frame", "scene", "what's happening", "what do you see"]):
+        # Sort objects by confidence
+        sorted_objects = sorted(object_details, key=lambda x: x["confidence"], reverse=True)
+        
+        # Create a natural language description
+        if len(sorted_objects) == 1:
+            return f"In this frame, I can see a {sorted_objects[0]['name']} with {sorted_objects[0]['confidence']:.0%} confidence."
+        
+        # Group objects by type for better description
+        grouped_objects = {}
+        for obj in sorted_objects:
+            name = obj["name"]
+            if name not in grouped_objects:
+                grouped_objects[name] = []
+            grouped_objects[name].append(obj["confidence"])
+
+        descriptions = []
+        for obj_type, confidences in grouped_objects.items():
+            count = len(confidences)
+            avg_conf = sum(confidences) / len(confidences)
+            if count > 1:
+                descriptions.append(f"{count} {obj_type}s")
+            else:
+                descriptions.append(f"a {obj_type}")
+
+        if len(descriptions) == 1:
+            return f"In this frame, I can see {descriptions[0]}."
+        else:
+            return f"In this frame, I can see {', '.join(descriptions[:-1])}, and {descriptions[-1]}."
+
+    # 3. Questions about confidence or certainty
+    if any(word in query for word in ["confident", "certain", "sure", "accurate"]):
+        sorted_objects = sorted(object_details, key=lambda x: x["confidence"], reverse=True)
+        most_confident = sorted_objects[0]
+        return f"I am most confident about detecting a {most_confident['name']} with {most_confident['confidence']:.0%} confidence."
+
+    # 4. Questions about the environment or setting
+    if any(word in query for word in ["environment", "setting", "place", "location"]):
+        # Group objects by category (you can expand these categories)
+        categories = {
+            "people": ["person", "people", "man", "woman", "child"],
+            "furniture": ["chair", "table", "desk", "sofa", "bed"],
+            "electronics": ["laptop", "phone", "tv", "monitor", "camera"],
+            "objects": ["book", "pen", "paper", "bag", "cup"]
+        }
+        
+        detected_categories = {}
+        for obj in object_details:
+            for category, items in categories.items():
+                if obj["name"].lower() in items:
+                    if category not in detected_categories:
+                        detected_categories[category] = []
+                    detected_categories[category].append(obj["name"])
+
+        if detected_categories:
+            category_descriptions = []
+            for category, items in detected_categories.items():
+                if len(items) > 1:
+                    category_descriptions.append(f"some {category}")
+                else:
+                    category_descriptions.append(f"a {items[0]}")
+            
+            return f"This appears to be a setting with {', '.join(category_descriptions)}."
+        else:
+            return "I can see various objects in the frame, but I'm not sure about the specific setting."
+
+    # 5. Questions about movement or activity
+    if any(word in query for word in ["moving", "activity", "action", "doing"]):
+        if "person" in object_counts:
+            return "I can see a person in the frame, but I can't determine their specific activity from a single frame."
+        else:
+            return "I don't see any people in the frame to describe their activity."
+
+    # 6. Questions about relationships between objects
+    if any(word in query for word in ["relationship", "between", "relative", "position"]):
+        if len(object_details) > 1:
+            return f"I can see multiple objects in the frame, but I can't determine their spatial relationships from a single frame."
+        else:
+            return "I only see one object in the frame, so there are no relationships to describe."
+
+    # 7. Questions about time or duration
+    if any(word in query for word in ["time", "duration", "long", "how long"]):
+        return "I can only analyze individual frames, so I can't determine time-related information."
+
+    # Default response for other questions
+    sorted_objects = sorted(object_details, key=lambda x: x["confidence"], reverse=True)
+    formatted_objects = ", ".join([f"{obj['name']} ({obj['confidence']:.0%})" for obj in sorted_objects])
+    return f"In this frame, I can see: {formatted_objects}."
 
 @app.route("/")
 def index():
